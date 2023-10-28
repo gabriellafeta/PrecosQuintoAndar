@@ -195,8 +195,123 @@ GI_matriz = {
     "Condomínio": ganho_de_informacao(condo)
 }
 ```
-<img src="Captura de tela 2023-10-27 221058o.png"
+<img src="matrz.png"
    width="1000"
-     height="100">
+     height="50">
+
+Pelos altos valores, entende-se que todos os atributos analisados possuem potencial de regressão.
+
+## aplicando e comparando modelos
+
+Primeiro utilizou-se o RandomForestRegressor sem validação cruzada:
+
+
+```
+X = atributos_df[["Banheiros", "Área", "Quartos", "Condomínio"]]
+X_dummies = pd.get_dummies(X, columns=["Banheiros", "Área", "Quartos", "Condomínio"])
+y = atributos_df["Preço aluguel"]
+
+# Modelo RandomForestRegressor
+
+X_train, X_test, y_train, y_test = train_test_split(X_dummies, y, test_size=0.2, random_state=42)
+
+modelo_1 = RandomForestRegressor(n_estimators=100, random_state=42)
+modelo_1.fit(X_train, y_train)
+
+y_pred = modelo_1.predict(X_test)
+
+diferencas = y_test - y_pred
+diferencas_absolutas = np.abs(diferencas)
+diferenca_percentual = 100 * np.abs(y_test - y_pred) / y_test
+desvio_padrao = np.std(diferenca_percentual)
+
+resultado = pd.DataFrame({
+    'Real': y_test,
+    'Previsto': y_pred,
+    'Diferença': diferencas,
+    'Diferença Absoluta': diferencas_absolutas,
+    'Diferença Percentual': diferenca_percentual,
+    'Desvio padrão': desvio_padrao
+})
+
+# print(resultado)
+print("Raiz do Erro Quadrático Médio (RMSE):", np.sqrt(mean_squared_error(y_test, y_pred)))
+print("Média da Diferença Percentual:", np.mean(resultado["Diferença Percentual"]))
+
+```
+Os resultados foram:
+Raiz do Erro Quadrático Médio (RMSE): 857.2194332360518
+Média da Diferença Percentual: 26.211969590667447
+
+Em Seguida foi aplicado a Regressão Linear com validação cruzada:
+
+```
+X2 = atributos_df[["Banheiros", "Área", "Quartos", "Condomínio"]]
+X_dummies2 = pd.get_dummies(X2, columns=["Banheiros", "Área", "Quartos", "Condomínio"])
+y2 = atributos_df["Preço aluguel"]
+
+modelo_2 = LinearRegression()
+cv = KFold(n_splits=5, shuffle=True, random_state=42)
+y_pred2 = cross_val_predict(modelo_2, X_dummies2, y2, cv=cv)
+
+diferencas2 = y2 - y_pred2
+diferencas_absolutas2 = np.abs(diferencas2)
+diferenca_percentual2 = 100 * np.abs(y2 - y_pred2) / y2
+desvio_padrao2 = np.std(diferenca_percentual2)
+
+resultado2 = pd.DataFrame({
+    'Real': y2,
+    'Previsto': y_pred2,
+    'Diferença': diferencas2,
+    'Diferença Absoluta': diferencas_absolutas2,
+    'Diferença Percentual': diferenca_percentual2
+})
+```
+Os alguns valores presentes em resultado2 estavam completamente fora da realidade, portanto foram removidos para cálculo das métricas:
+
+```
+condicao = (resultado2['Previsto'] >= 1) & (resultado2['Previsto'] <= 100000)
+resultado_filtrado = resultado2[condicao]
+
+print("Raiz do Erro Quadrático Médio (RMSE) após filtragem:", np.sqrt(mean_squared_error(resultado_filtrado['Real'], resultado_filtrado['Previsto'])))
+print("Média da Diferença Percentual após filtragem:", np.mean(resultado_filtrado['Diferença Percentual']))
+```
+Raiz do Erro Quadrático Médio (RMSE) após filtragem: 924.5668290558418
+Média da Diferença Percentual após filtragem: 31.67726106926854
+
+Por fim, foi aplicado o modelo KNNRegressor com validação cruzada:
+```
+modelo_3 = KNeighborsRegressor(n_neighbors=5)
+
+X3 = atributos_df[["Banheiros", "Área", "Quartos", "Condomínio"]]
+X_dummies3 = pd.get_dummies(X3, columns=["Banheiros", "Área", "Quartos", "Condomínio"])
+y3 = atributos_df["Preço aluguel"]
+
+cv3 = KFold(n_splits=5, shuffle=True, random_state=42)
+y_pred3 = cross_val_predict(modelo_3, X_dummies3, y3, cv=cv3)
+
+diferencas3 = y3 - y_pred3
+diferencas_absolutas3 = np.abs(diferencas3)
+diferenca_percentual3 = 100 * np.abs(y3 - y_pred3) / y3
+desvio_padrao3 = np.std(diferenca_percentual3)
+
+resultado3 = pd.DataFrame({
+    'Real': y3,
+    'Previsto': y_pred3,
+    'Diferença': diferencas3,
+    'Diferença Absoluta': diferencas_absolutas3,
+    'Diferença Percentual': diferenca_percentual3
+})
+
+print("Raiz do Erro Quadrático Médio (RMSE):", np.sqrt(mean_squared_error(y3, y_pred3)))
+print("Média da Diferença Percentual:", np.mean(resultado3["Diferença Percentual"]))
+```
+
+Raiz do Erro Quadrático Médio (RMSE): 969.921327573861
+Média da Diferença Percentual: 31.30664871732234
+
+# Conclusão
+
+Apesar de ambos os algoritmos serem capazes de realizar a regressão com os atributos selecionados, os resultados ainda deram erros muito altos. O mais adequado é o RandomForestRegressor e mesmo assim possui erro percentual de 26%.
 
 
