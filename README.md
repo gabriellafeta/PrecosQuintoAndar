@@ -123,4 +123,80 @@ Percebe-se que o número de lugares para alugar na base é diretamente proporcio
 
 ## Seleção de atributo
 
-A seleção de atributo terá como base o [Ganho de informação]()
+A seleção de atributo terá como base a entropia e ganho de informação:
+
+<img src="entropia.png"
+   width="500"
+     height="200">
+
+<img src="ganho de informação.png"
+   width="350"
+     height="100">
+
+onde cada p representa a proporção de uma classe dentro de um atributo sobre o total de itens do atributo:
+
+As equações foram traduzidas em fórmulas:
+```
+def entropia(col):
+    entropia = 0
+    col_cte = Counter(col)
+
+    for classe in col.unique():
+        prob = col_cte[classe] / len(col)
+        entropia -= prob * math.log2(prob)
+
+    return entropia
+
+
+def ganho_de_informacao(col):
+    col_cte = Counter(col)
+    entropia_ponderada = 0
+
+    for classe in col.unique():
+        prob_label = col_cte[classe] / len(col)
+        entropia_ponderada -= prob_label * prob_label * math.log2(prob_label)
+
+    GI = entropia(col) - entropia_ponderada
+
+    return GI
+```
+
+Como os algoritmos de ML tem dificuldade em lidar com atributos numéricos foram criados faixas para área e condomínio.
+
+```
+bqa_tratada_v2 = bqa_tratada.copy()
+
+limites = [0, 30, 60, 90, 150, 300, 800]
+valores_area = ['0-30', '31-60', '61-90', '91 - 150', '151 - 300', 'acima de 300']
+bqa_tratada_v2.loc[:, "Faixa Área"] = pd.cut(bqa_tratada["houseInfo/area"], bins=limites, labels=valores_area, include_lowest=True)
+
+limites2 = [0, 300, 600, 1200, 2000, 3312]
+valores_condo = ['0-300', '301-600', '601-1200', '1201-2000','Acima de 2000']
+bqa_tratada_v2.loc[:, "Faixa condominio"] = pd.cut(bqa_tratada["houseInfo/condoPrice"],bins=limites2, labels=valores_condo, include_lowest=True)
+
+
+# Calculando os ganhos de informação para as caracteristicas mais relevantes do quinto andar
+
+bairro = bqa_tratada_v2["houseInfo/address/neighborhood"]
+banheiros = bqa_tratada_v2["houseInfo/bathrooms"]
+area = bqa_tratada_v2["Faixa Área"]
+quartos = bqa_tratada_v2["houseInfo/bedrooms"]
+condo = bqa_tratada_v2["Faixa condominio"]
+
+```
+Por fim, a matriz de ganho de informação foi gerada:
+
+```
+GI_matriz = {
+    "Bairro": ganho_de_informacao(bairro),
+    "Banheiros": ganho_de_informacao(banheiros),
+    "Área": ganho_de_informacao(area),
+    "Quartos": ganho_de_informacao(quartos),
+    "Condomínio": ganho_de_informacao(condo)
+}
+```
+<img src="Captura de tela 2023-10-27 221058o.png"
+   width="1000"
+     height="100">
+
+
